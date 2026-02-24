@@ -6,8 +6,8 @@ if not Fluent then
 end
 
 local Window = Fluent:CreateWindow({
-    Title = "MEU SCRIPT",
-    SubTitle = "by Dede7zinho777",
+    Title = "CACHOS SCRIPT",
+    SubTitle = "by CachosDEV",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
     Theme = "Dark"
