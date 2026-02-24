@@ -13,13 +13,11 @@ local Window = Fluent:CreateWindow({
     Theme = "Dark"
 })
 
--- APENAS Main e Settings (as abas nativas da Fluent)
+-- APENAS Main e Settings
 local Tabs = {
     Main = Window:AddTab({ Title = "Main", Icon = "home" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
-
--- A Settings já vem com todas as configs da UI (fechar, temas, etc)
 
 return {
     Fluent = Fluent,
