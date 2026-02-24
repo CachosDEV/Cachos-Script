@@ -1,29 +1,57 @@
 print("🚀 CARREGANDO...")
 
--- Carrega a UI base
-local UI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Dede7zinho777/scripts/main/ui-base.lua"))()
+-- Verificar se conseguiu carregar a UI
+local sucesso, UI = pcall(function()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/Dede7zinho777/minha-ui/main/ui-base.lua"))()
+end)
 
--- Lista de funções para carregar
-local funcoes = {
+if not sucesso or not UI then
+    warn("❌ ERRO: Não conseguiu carregar a UI")
+    return
+end
+
+print("✅ UI carregada!")
+
+-- Lista de scripts
+local scripts = {
     "teste",
     "auto"
 }
 
--- Carrega cada função
-for _, nome in ipairs(funcoes) do
-    local url = "https://raw.githubusercontent.com/Dede7zinho777/scripts/main/" .. nome .. ".lua"
-    local func = loadstring(game:HttpGet(url))()
-    func(UI)
-    print("✅ Carregou: " .. nome)
+-- Carregar cada script
+for _, nome in ipairs(scripts) do
+    local url = "https://raw.githubusercontent.com/Dede7zinho777/meus-scripts/main/" .. nome .. ".lua"
+    
+    local funcSucesso, func = pcall(function()
+        return loadstring(game:HttpGet(url))()
+    end)
+    
+    if funcSucesso and func then
+        local execSucesso = pcall(function()
+            func(UI)
+        end)
+        
+        if execSucesso then
+            print("✅ Script: " .. nome)
+        else
+            warn("❌ Erro ao executar: " .. nome)
+        end
+    else
+        warn("❌ Erro ao carregar: " .. nome)
+    end
 end
 
--- Abre na aba TESTE
-UI.Window:SelectTab(3)
+-- Abrir na aba correta
+if UI.Window and UI.Tabs then
+    UI.Window:SelectTab(3)
+    
+    if UI.Fluent then
+        UI.Fluent:Notify({
+            Title = "✅ PRONTO!",
+            Content = "Scripts carregados",
+            Duration = 4
+        })
+    end
+end
 
-UI.Fluent:Notify({
-    Title = "✅ PRONTO!",
-    Content = "Funções carregadas na aba TESTE",
-    Duration = 4
-})
-
-print("🎉 Tudo carregado! Clique na aba TESTE")
+print("🎉 Processo finalizado!")
