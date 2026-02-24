@@ -1,18 +1,17 @@
-print("🚀 CARREGANDO...")
+print("🚀 CARREGANDO CACHOS SCRIPT...")
 
--- Verificar se conseguiu carregar a UI
-local sucesso, UI = pcall(function()
-    return loadstring(game:HttpGet("https://raw.githubusercontent.com/Dede7zinho777/minha-ui/main/ui-base.lua"))()
-end)
+-- Carregar UI do repositório CachosDEV
+local uiUrl = "https://raw.githubusercontent.com/CachosDEV/Cachos-Script/refs/heads/main/ui-base.lua"
+local UI = loadstring(game:HttpGet(uiUrl))()
 
-if not sucesso or not UI then
-    warn("❌ ERRO: Não conseguiu carregar a UI")
+if not UI then
+    warn("❌ ERRO: UI não carregou")
     return
 end
 
 print("✅ UI carregada!")
 
--- Lista de scripts
+-- Lista de scripts (no MESMO repositório)
 local scripts = {
     "teste",
     "auto"
@@ -20,38 +19,27 @@ local scripts = {
 
 -- Carregar cada script
 for _, nome in ipairs(scripts) do
-    local url = "https://raw.githubusercontent.com/Dede7zinho777/meus-scripts/main/" .. nome .. ".lua"
+    local url = "https://raw.githubusercontent.com/CachosDEV/Cachos-Script/refs/heads/main/" .. nome .. ".lua"
     
-    local funcSucesso, func = pcall(function()
-        return loadstring(game:HttpGet(url))()
-    end)
-    
-    if funcSucesso and func then
-        local execSucesso = pcall(function()
-            func(UI)
-        end)
-        
-        if execSucesso then
-            print("✅ Script: " .. nome)
-        else
-            warn("❌ Erro ao executar: " .. nome)
-        end
+    local func = loadstring(game:HttpGet(url))()
+    if func then
+        func(UI)
+        print("✅ Script: " .. nome)
     else
         warn("❌ Erro ao carregar: " .. nome)
     end
 end
 
--- Abrir na aba correta
+-- Abrir na aba TESTE
 if UI.Window and UI.Tabs then
     UI.Window:SelectTab(3)
-    
     if UI.Fluent then
         UI.Fluent:Notify({
-            Title = "✅ PRONTO!",
-            Content = "Scripts carregados",
+            Title = "✅ CACHOS SCRIPT",
+            Content = "Scripts carregados!",
             Duration = 4
         })
     end
 end
 
-print("🎉 Processo finalizado!")
+print("🎉 Tudo pronto! Clique na aba TESTE")
