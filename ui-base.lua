@@ -1,5 +1,10 @@
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
+if not Fluent then
+    warn("❌ Erro ao carregar Fluent")
+    return
+end
+
 local Window = Fluent:CreateWindow({
     Title = "MEU SCRIPT",
     SubTitle = "by Dede7zinho777",
