@@ -1,5 +1,6 @@
 return function(UI)
-    -- Adiciona funções na aba TESTE
+    if not UI or not UI.Tabs or not UI.Tabs.Teste then return end
+    
     UI.Tabs.Teste:AddToggle("auto_toggle", {
         Title = "🌐 Auto Hop",
         Default = false
