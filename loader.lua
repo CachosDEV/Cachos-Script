@@ -1,22 +1,47 @@
-print("🚀 CARREGANDO CACHOS SCRIPT...")
+-- ===========================================
+-- LOADER PRINCIPAL - CACHOS SCRIPT
+-- TODOS OS MÓDULOS CARREGADOS
+-- ===========================================
 
--- Carregar UI base
-local uiUrl = "https://raw.githubusercontent.com/CachosDEV/Cachos-Script/refs/heads/main/ui-base.lua"
-local UI = loadstring(game:HttpGet(uiUrl))()
+print("🚀 CARREGANDO CACHOS SCRIPT...")
+print("📦 Versão 2.0 - Multi-módulos")
+
+-- ===========================================
+-- FUNÇÃO PARA VERIFICAR SE ARQUIVO CARREGOU
+-- ===========================================
+local function carregarArquivo(url, nome)
+    local sucesso, resultado = pcall(function()
+        return loadstring(game:HttpGet(url))()
+    end)
+    
+    if sucesso and resultado then
+        print("✅ " .. nome .. " carregado!")
+        return resultado
+    else
+        warn("❌ Erro ao carregar " .. nome)
+        return nil
+    end
+end
+
+-- ===========================================
+-- 1. CARREGAR UI BASE
+-- ===========================================
+local UI = carregarArquivo(
+    "https://raw.githubusercontent.com/CachosDEV/Cachos-Script/refs/heads/main/ui-base.lua",
+    "UI Base"
+)
 
 if not UI then
-    warn("❌ ERRO: UI não carregou")
+    warn("❌ ERRO FATAL: UI não carregou")
     return
 end
 
-print("✅ UI base carregada!")
-
 -- ===========================================
--- CONTEÚDO DA ABA MAIN
+-- 2. CONFIGURAR ABA MAIN (BEM-VINDO)
 -- ===========================================
 UI.Tabs.Main:AddParagraph({
     Title = "👋 Bem-vindo ao Cachos Script!",
-    Content = "Este é seu hub de scripts personalizado.\n\n📌 Use as abas acima para acessar as funções:\n• TESTE - Funções de teste\n• AUTO HOP - Pular servidores automaticamente"
+    Content = "Este é seu hub de scripts personalizado.\n\n📌 Módulos disponíveis:\n• TESTE - Funções de teste\n• AUTO HOP - Pular servidores\n• BRAINROT - Coletor de brainrots"
 })
 
 UI.Tabs.Main:AddButton({
@@ -25,57 +50,82 @@ UI.Tabs.Main:AddButton({
     Callback = function()
         UI.Fluent:Notify({
             Title = "ℹ️ Cachos Script",
-            Content = "Versão 1.0\nBy CachosDEV",
-            Duration = 4
+            Content = "Versão 2.0\nBy CachosDEV\n3 módulos ativos",
+            Duration = 5
         })
     end
 })
 
 -- ===========================================
--- CONFIGURAÇÕES DA UI (SETTINGS ORIGINAL)
+-- 3. CONFIGURAR ABA SETTINGS (ORIGINAL)
 -- ===========================================
--- Carregar os addons da Fluent para a Settings original
-local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
-local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+local SaveManager = carregarArquivo(
+    "https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua",
+    "SaveManager"
+)
 
-SaveManager:SetLibrary(UI.Fluent)
-InterfaceManager:SetLibrary(UI.Fluent)
+local InterfaceManager = carregarArquivo(
+    "https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua",
+    "InterfaceManager"
+)
 
-SaveManager:IgnoreThemeSettings()
-InterfaceManager:SetFolder("CachosScript")
-SaveManager:SetFolder("CachosScript/config")
-
-InterfaceManager:BuildInterfaceSection(UI.Tabs.Settings)
-SaveManager:BuildConfigSection(UI.Tabs.Settings)
+if SaveManager and InterfaceManager then
+    SaveManager:SetLibrary(UI.Fluent)
+    InterfaceManager:SetLibrary(UI.Fluent)
+    
+    SaveManager:IgnoreThemeSettings()
+    InterfaceManager:SetFolder("CachosScript")
+    SaveManager:SetFolder("CachosScript/config")
+    
+    InterfaceManager:BuildInterfaceSection(UI.Tabs.Settings)
+    SaveManager:BuildConfigSection(UI.Tabs.Settings)
+    
+    print("✅ Configurações da UI carregadas")
+end
 
 -- ===========================================
--- CARREGAR SCRIPTS (CADA UM CRIA SUA ABA)
+-- 4. LISTA DE MÓDULOS (SCRIPTS)
 -- ===========================================
-local scripts = {
-    "teste",
-    "auto"
+local modulos = {
+    { nome = "teste",     arquivo = "teste.lua"     },
+    { nome = "auto",      arquivo = "auto.lua"      },
+    { nome = "brainrot",  arquivo = "brainrot.lua"  }
 }
 
-for _, nome in ipairs(scripts) do
-    local url = "https://raw.githubusercontent.com/CachosDEV/Cachos-Script/refs/heads/main/" .. nome .. ".lua"
-    local func = loadstring(game:HttpGet(url))()
+-- ===========================================
+-- 5. CARREGAR CADA MÓDULO
+-- ===========================================
+local modulosCarregados = 0
+
+for _, modulo in ipairs(modulos) do
+    local url = "https://raw.githubusercontent.com/CachosDEV/Cachos-Script/refs/heads/main/" .. modulo.arquivo
+    local func = carregarArquivo(url, modulo.nome)
+    
     if func then
-        func(UI)
-        print("✅ Script: " .. nome)
-    else
-        warn("❌ Erro: " .. nome)
+        local execSucesso = pcall(function()
+            func(UI)
+        end)
+        
+        if execSucesso then
+            print("   ✅ Função executada: " .. modulo.nome)
+            modulosCarregados = modulosCarregados + 1
+        else
+            warn("   ❌ Erro ao executar: " .. modulo.nome)
+        end
     end
 end
 
 -- ===========================================
--- FINALIZAR
+-- 6. FINALIZAR
 -- ===========================================
 UI.Window:SelectTab(1) -- Abre na Main
 
 UI.Fluent:Notify({
     Title = "✅ CACHOS SCRIPT",
-    Content = "Todas as abas carregadas!",
-    Duration = 4
+    Content = modulosCarregados .. " módulos carregados!",
+    Duration = 5
 })
 
-print("🎉 Tudo pronto! Abas: Main, Settings, TESTE, AUTO HOP")
+print("🎉 SISTEMA COMPLETO CARREGADO!")
+print("📌 Abas disponíveis: Main, Settings, TESTE, AUTO HOP, BRAINROT")
+print("🚀 Link do loader: https://raw.githubusercontent.com/CachosDEV/Cachos-Script/refs/heads/main/loader.lua")
