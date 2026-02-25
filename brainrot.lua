@@ -1,5 +1,6 @@
 -- ===========================================
 -- MÓDULO: BRAINROT COLLECTOR PROFISSIONAL
+-- CORRIGIDO: Com Dropdown e Anti-Travamento
 -- ===========================================
 return function(UI)
     if not UI or not UI.Window then return end
@@ -15,31 +16,24 @@ return function(UI)
     -- ===========================================
     local coletorAtivo = false
     local brainrotThread = nil
-    local velocidadeColeta = 1 -- segundos entre tentativas
+    local velocidadeColeta = 2 -- segundos (aumentado para não travar)
     
-    -- LISTA COMPLETA DE RARIDADES DO JOGO
-    local raridadesDisponiveis = {
-        "Comum",
-        "Incomum",
-        "Raro",
-        "Épico",
-        "Lendário",
-        "Mítico",
-        "Divino",
-        "Secreto"
+    -- LISTA COMPLETA DE RARIDADES
+    local todasRaridades = {
+        "Comum", "Incomum", "Raro", "Épico", 
+        "Lendário", "Mítico", "Divino", "Secreto"
     }
     
-    -- RARIDADES SELECIONADAS (inicia com todas)
-    local raridadesSelecionadas = {}
-    for _, r in ipairs(raridadesDisponiveis) do
-        raridadesSelecionadas[r] = true
-    end
+    -- RARIDADES SELECIONADAS (inicia com algumas padrão)
+    local raridadesSelecionadas = {
+        "Raro", "Épico", "Lendário", "Mítico", "Divino", "Secreto"
+    }
     
     -- ===========================================
-    -- FUNÇÃO GODMODE (PREVINE MORTE)
+    -- FUNÇÃO GODMODE (adaptada do source2.txt)
     -- ===========================================
     local function ativarProtecao()
-        -- Remove hitboxes do tsunami (código do source2.txt)
+        -- Remove hitboxes do tsunami
         local at = workspace:FindFirstChild("ActiveTsunamis")
         if at then
             for _, v in pairs(at:GetDescendants()) do
@@ -49,25 +43,18 @@ return function(UI)
             end
         end
         
-        -- Torna tsunami invisível (não afeta colisão)
-        for _, v in pairs(at:GetDescendants()) do
-            if v:IsA("BasePart") then
-                v.Transparency = 1
-            end
-        end
-        
-        -- Proteção extra: noclip temporário
-        if player.Character then
-            for _, part in pairs(player.Character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
+        -- Torna tsunami invisível
+        if at then
+            for _, v in pairs(at:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.Transparency = 1
                 end
             end
         end
     end
     
     -- ===========================================
-    -- FUNÇÃO PARA ENCONTRAR BRAINROTS POR RARIDADE
+    -- FUNÇÃO PARA ENCONTRAR BRAINROTS
     -- ===========================================
     local function encontrarBrainrots()
         local brainrotsEncontrados = {}
@@ -75,14 +62,14 @@ return function(UI)
         if not ab then return brainrotsEncontrados end
         
         -- Para cada raridade selecionada
-        for raridade, selecionada in pairs(raridadesSelecionadas) do
-            if selecionada then
-                local pasta = ab:FindFirstChild(raridade)
-                if pasta then
-                    for _, brainrot in pairs(pasta:GetChildren()) do
-                        if brainrot:IsA("Model") then
-                            table.insert(brainrotsEncontrados, brainrot)
-                        end
+        for _, raridade in ipairs(raridadesSelecionadas) do
+            local pasta = ab:FindFirstChild(raridade)
+            if pasta then
+                for _, brainrot in pairs(pasta:GetChildren()) do
+                    if brainrot:IsA("Model") and not brainrot:GetAttribute("Coletado") then
+                        -- Marca para não coletar repetido
+                        brainrot:SetAttribute("Coletado", true)
+                        table.insert(brainrotsEncontrados, brainrot)
                     end
                 end
             end
@@ -97,14 +84,14 @@ return function(UI)
     local function coletarBrainrot(brainrot)
         if not brainrot then return false end
         
-        -- Ativar proteção antes da coleta
+        -- Ativar proteção
         ativarProtecao()
         
         -- Encontrar parte principal
         local primaryPart = brainrot.PrimaryPart or brainrot:FindFirstChild("Handle") or brainrot:FindFirstChildWhichIsA("BasePart")
         if not primaryPart then return false end
         
-        -- Teleportar para o brainrot
+        -- Teleportar para o brainrot (posição segura)
         local playerChar = game.Players.LocalPlayer.Character
         if not playerChar then return false end
         
@@ -112,13 +99,12 @@ return function(UI)
         if not hrp then return false end
         
         -- POSIÇÃO SEGURA: teleporta levemente acima
-        local posAlvo = primaryPart.Position + Vector3.new(0, 3, 0)
-        hrp.CFrame = CFrame.new(posAlvo)
+        hrp.CFrame = CFrame.new(primaryPart.Position + Vector3.new(0, 5, 0))
         
-        -- Pequena pausa para o jogo processar
+        -- Aguarda um pouco
         task.wait(0.3)
         
-        -- Tentar ativar o prompt de coleta
+        -- Tentar ativar o prompt de coleta (igual no source2.txt)
         local prompt = brainrot:FindFirstChild("TakePrompt", true)
         if prompt and prompt:IsA("ProximityPrompt") then
             pcall(function()
@@ -127,58 +113,34 @@ return function(UI)
             return true
         end
         
-        -- Se não achou prompt, tenta por toque
-        if primaryPart then
-            pcall(function()
-                firetouchinterest(hrp, primaryPart, 0)
-                task.wait(0.1)
-                firetouchinterest(hrp, primaryPart, 1)
-            end)
-            return true
-        end
-        
         return false
     end
     
     -- ===========================================
-    -- FUNÇÃO PRINCIPAL DO LOOP DE COLETA
+    -- FUNÇÃO PRINCIPAL (COM ANTI-TRAVAMENTO)
     -- ===========================================
     local function loopColeta()
         while coletorAtivo do
-            -- Encontrar brainrots disponíveis
+            -- Encontrar brainrots
             local brainrots = encontrarBrainrots()
             
             if #brainrots > 0 then
-                UI.Fluent:Notify({
-                    Title = "🧠 Brainrot",
-                    Content = #brainrots .. " brainrots encontrados!",
-                    Duration = 2
-                })
+                -- Coleta apenas 1 por ciclo para não travar
+                local coletado = coletarBrainrot(brainrots[1])
                 
-                -- Coletar cada brainrot
-                for _, brainrot in ipairs(brainrots) do
-                    if not coletorAtivo then break end
-                    
-                    local sucesso = coletarBrainrot(brainrot)
-                    if sucesso then
-                        print("✅ Coletou:", brainrot.Name)
-                    end
-                    
-                    task.wait(0.5) -- pausa entre coletas
+                if coletado then
+                    UI.Fluent:Notify({
+                        Title = "🧠 Brainrot",
+                        Content = "Coletado: " .. brainrots[1].Name,
+                        Duration = 2
+                    })
                 end
-            else
-                -- Se não achou nada, espera e tenta de novo
-                UI.Fluent:Notify({
-                    Title = "🧠 Brainrot",
-                    Content = "Nenhum brainrot encontrado...",
-                    Duration = 2
-                })
             end
             
-            -- Aguardar intervalo configurado
-            for i = velocidadeColeta, 1, -1 do
+            -- ESPERA OBRIGATÓRIA para não travar o jogo
+            for i = 1, velocidadeColeta do
                 if not coletorAtivo then break end
-                task.wait(1)
+                task.wait(1) -- 1 segundo de cada vez
             end
         end
     end
@@ -187,166 +149,122 @@ return function(UI)
     -- ELEMENTOS DA UI
     -- ===========================================
     
-    -- PARÁGRAFO INFORMATIVO
+    -- TÍTULO
     UI.Tabs.Brainrot:AddParagraph({
         Title = "🧠 Coletor de Brainrots",
-        Content = "Selecione as raridades e ative a coleta automática.\nO sistema protege contra mortes por tsunami."
+        Content = "Selecione as raridades no dropdown abaixo"
     })
     
     -- ===========================================
-    -- SELETOR MÚLTIPLO DE RARIDADES
+    -- DROPDOWN DE SELEÇÃO MÚLTIPLA (CORRIGIDO)
     -- ===========================================
+    
+    -- Texto explicativo
     UI.Tabs.Brainrot:AddParagraph({
         Title = "⚙️ Raridades Ativas",
-        Content = "Clique nos botões abaixo para ativar/desativar"
+        Content = "Clique para selecionar/deselecionar"
     })
     
-    -- Criar botões para cada raridade
-    for _, raridade in ipairs(raridadesDisponiveis) do
-        -- Frame para cada raridade
-        UI.Tabs.Brainrot:AddToggle("raridade_" .. raridade, {
-            Title = "🎯 " .. raridade,
-            Description = "Ativar coleta de brainrots " .. raridade,
-            Default = true
-        }):OnChanged(function(v)
-            raridadesSelecionadas[raridade] = v
-            local status = v and "ativada" or "desativada"
-            print("✅ Raridade " .. raridade .. " " .. status)
-            
-            UI.Fluent:Notify({
-                Title = "⚙️ Raridade",
-                Content = raridade .. " " .. status,
-                Duration = 2
-            })
-        end)
-    end
+    -- Dropdown de múltipla escolha
+    UI.Tabs.Brainrot:AddDropdown("raridades_dropdown", {
+        Title = "📋 Raridades",
+        Description = "Selecione as raridades que deseja coletar",
+        Values = todasRaridades,
+        Multi = true, -- Permite múltipla seleção
+        Default = raridadesSelecionadas
+    }):OnChanged(function(valores)
+        -- Atualiza lista de raridades selecionadas
+        raridadesSelecionadas = {}
+        for raridade, selecionada in pairs(valores) do
+            if selecionada then
+                table.insert(raridadesSelecionadas, raridade)
+            end
+        end
+        
+        UI.Fluent:Notify({
+            Title = "⚙️ Raridades",
+            Content = #raridadesSelecionadas .. " raridades selecionadas",
+            Duration = 2
+        })
+    end)
     
     -- ===========================================
     -- CONTROLES DE VELOCIDADE
     -- ===========================================
-    UI.Tabs.Brainrot:AddParagraph({
-        Title = "⏱️ Configurações de Coleta",
-        Content = "Ajuste o intervalo entre verificações"
-    })
-    
     UI.Tabs.Brainrot:AddSlider("velocidade_coleta", {
-        Title = "⚡ Velocidade de Coleta",
-        Description = "Tempo entre verificações (segundos)",
-        Default = 1,
-        Min = 0.5,
+        Title = "⏱️ Velocidade de Coleta",
+        Description = "Segundos entre coletas (maior = mais seguro)",
+        Default = 2,
+        Min = 1,
         Max = 5,
-        Rounding = 0.5
+        Rounding = 1
     }):OnChanged(function(v)
         velocidadeColeta = v
         print("⏱️ Velocidade:", v)
     end)
     
     -- ===========================================
-    -- TOGGLE PRINCIPAL DO COLETOR
+    -- TOGGLE PRINCIPAL (COM ANTI-TRAVAMENTO)
     -- ===========================================
     UI.Tabs.Brainrot:AddToggle("coletor_toggle", {
-        Title = "⚡ ATIVAR COLETOR AUTOMÁTICO",
-        Description = "Começa a coletar brainrots automaticamente",
+        Title = "⚡ ATIVAR COLETOR",
+        Description = "ATENÇÃO: Use velocidade 2 ou mais para não travar",
         Default = false
     }):OnChanged(function(v)
         coletorAtivo = v
         
         if v then
-            -- Contar quantas raridades estão ativas
-            local count = 0
-            for _, ativa in pairs(raridadesSelecionadas) do
-                if ativa then count = count + 1 end
-            end
-            
             UI.Fluent:Notify({
                 Title = "✅ Coletor Ativado",
-                Content = count .. " raridades selecionadas",
-                Duration = 4
+                Content = "Coletando a cada " .. velocidadeColeta .. "s",
+                Duration = 3
             })
             
-            -- Iniciar loop
+            -- Iniciar loop em thread separada
             task.spawn(loopColeta)
             
         else
             UI.Fluent:Notify({
                 Title = "❌ Coletor Desativado",
-                Content = "Processo interrompido",
-                Duration = 3
+                Duration = 2
             })
         end
     end)
     
     -- ===========================================
-    -- BOTÃO DE COLETA ÚNICA (TESTE)
+    -- BOTÃO DE TESTE ÚNICO
     -- ===========================================
     UI.Tabs.Brainrot:AddButton({
-        Title = "🔍 COLETAR AGORA (UMA VEZ)",
-        Description = "Executa uma única busca e coleta",
+        Title = "🔍 TESTAR UMA VEZ",
+        Description = "Coleta 1 brainrot para testar",
         Callback = function()
-            UI.Fluent:Notify({
-                Title = "🔍 Coletando...",
-                Content = "Procurando brainrots",
-                Duration = 2
-            })
-            
             task.spawn(function()
                 local brainrots = encontrarBrainrots()
-                local coletados = 0
-                
-                for _, brainrot in ipairs(brainrots) do
-                    if coletarBrainrot(brainrot) then
-                        coletados = coletados + 1
-                    end
-                    task.wait(0.3)
+                if #brainrots > 0 then
+                    coletarBrainrot(brainrots[1])
+                    UI.Fluent:Notify({
+                        Title = "✅ Teste",
+                        Content = "Coletou: " .. brainrots[1].Name,
+                        Duration = 2
+                    })
+                else
+                    UI.Fluent:Notify({
+                        Title = "❌ Teste",
+                        Content = "Nenhum brainrot encontrado",
+                        Duration = 2
+                    })
                 end
-                
-                UI.Fluent:Notify({
-                    Title = "✅ Coleta Manual",
-                    Content = coletados .. " brainrots coletados",
-                    Duration = 3
-                })
             end)
         end
     })
     
     -- ===========================================
-    -- BOTÕES DE ATALHO (SELECIONAR/DESELECIONAR TODOS)
-    -- ===========================================
-    UI.Tabs.Brainrot:AddButton({
-        Title = "✅ Selecionar Todas Raridades",
-        Callback = function()
-            for raridade, _ in pairs(raridadesSelecionadas) do
-                raridadesSelecionadas[raridade] = true
-            end
-            UI.Fluent:Notify({
-                Title = "✅ Todas selecionadas",
-                Content = "Todas as raridades ativadas",
-                Duration = 2
-            })
-        end
-    })
-    
-    UI.Tabs.Brainrot:AddButton({
-        Title = "❌ Deselecionar Todas",
-        Callback = function()
-            for raridade, _ in pairs(raridadesSelecionadas) do
-                raridadesSelecionadas[raridade] = false
-            end
-            UI.Fluent:Notify({
-                Title = "❌ Todas deselecionadas",
-                Content = "Nenhuma raridade ativa",
-                Duration = 2
-            })
-        end
-    })
-    
-    -- ===========================================
-    -- SEÇÃO INFORMATIVA SOBRE SEGURANÇA
+    -- AVISO IMPORTANTE
     -- ===========================================
     UI.Tabs.Brainrot:AddParagraph({
-        Title = "🛡️ Sistema de Segurança",
-        Content = "• Remove hitboxes do tsunami\n• Torna tsunami invisível\n• Ativa noclip temporário\n• Teleporta para posição segura"
+        Title = "⚠️ IMPORTANTE",
+        Content = "• Use velocidade 2 ou mais\n• Não deixe o coletor ligado sem necessidade\n• O jogo pode travar se a velocidade for muito baixa"
     })
     
-    print("✅ Módulo BRAINROT carregado! (Coletor profissional com " .. #raridadesDisponiveis .. " raridades)")
+    print("✅ Módulo BRAINROT carregado! (com dropdown e anti-travamento)")
 end
